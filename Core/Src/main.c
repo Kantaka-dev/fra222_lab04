@@ -49,6 +49,12 @@ UART_HandleTypeDef huart2;
 
 uint32_t ADCData[2] = {0};
 
+uint8_t SwitchState = 0;
+
+uint32_t TimeStamp = 0;
+uint32_t LEDOffPeriod = 0;
+uint32_t ResponsePeriod = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -108,6 +114,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
+	  if (SwitchState)  //while pressing
+	  {
+		  if (HAL_GetTick()-TimeStamp > LEDOffPeriod)
+		  {
+			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);  //turn LED ON
+		  }
+	  }
 
     /* USER CODE BEGIN 3 */
   }
@@ -324,7 +338,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == GPIO_PIN_13)  //check is it USER BUTTON?
 	{
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		if (SwitchState == 0)  //at the moment press
+		{
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);  //turn LED OFF
+			LEDOffPeriod = 1000 + ((22695477 * ADCData[0])+ ADCData[1])% 10000;
+		}
+		else  //at the moment unpress
+		{
+			ResponsePeriod = HAL_GetTick() - TimeStamp - LEDOffPeriod;
+
+			if (ResponsePeriod<0) {ResponsePeriod = -1;}
+		}
+
+		SwitchState = !SwitchState;  //0 or 1
 	}
 }
 
