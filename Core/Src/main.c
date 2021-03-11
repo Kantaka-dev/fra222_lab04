@@ -107,6 +107,8 @@ int main(void)
 
   HAL_ADC_Start_DMA(&hadc1, ADCData, 2);
 
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);  //turn LED ON
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,6 +117,8 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
+    /* USER CODE BEGIN 3 */
+
 	  if (SwitchState)  //while pressing
 	  {
 		  if (HAL_GetTick()-TimeStamp > LEDOffPeriod)
@@ -122,8 +126,6 @@ int main(void)
 			  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);  //turn LED ON
 		  }
 	  }
-
-    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
@@ -222,7 +224,7 @@ static void MX_ADC1_Init(void)
   sConfigInjected.InjectedChannel = ADC_CHANNEL_0;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 2;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_84CYCLES;
   sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_NONE;
   sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
   sConfigInjected.AutoInjectedConv = DISABLE;
@@ -338,19 +340,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == GPIO_PIN_13)  //check is it USER BUTTON?
 	{
-		if (SwitchState == 0)  //at the moment press
+		switch (SwitchState)
 		{
-			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);  //turn LED OFF
-			LEDOffPeriod = 1000 + ((22695477 * ADCData[0])+ ADCData[1])% 10000;
-		}
-		else  //at the moment unpress
-		{
-			ResponsePeriod = HAL_GetTick() - TimeStamp - LEDOffPeriod;
+			case 0:  //at the moment press
 
-			if (ResponsePeriod<0) {ResponsePeriod = -1;}
-		}
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);  //turn LED OFF
 
-		SwitchState = !SwitchState;  //0 or 1
+				TimeStamp = HAL_GetTick();
+				LEDOffPeriod = 1000 + ((22695477 * ADCData[0])+ ADCData[1])% 10000;
+
+				SwitchState = 1;
+				break;
+
+			case 1:  //at the moment unpress
+
+				if (HAL_GetTick() - TimeStamp > LEDOffPeriod)
+				{
+					ResponsePeriod = (HAL_GetTick() - TimeStamp) - LEDOffPeriod;
+				}
+				else {
+					ResponsePeriod = 99999999;
+				}
+
+				SwitchState = 0;
+				break;
+		}
 	}
 }
 
